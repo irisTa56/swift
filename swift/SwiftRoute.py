@@ -47,7 +47,10 @@ except ImportError:
 
 try:
     # Check if we are in Google Colab
-    from google.colab.output import eval_js  # type: ignore
+    from google.colab.output import (
+        serve_kernel_port_as_iframe,
+        serve_kernel_port_as_window,
+    )  # type: ignore
 
     COLAB = True
 except ImportError:
@@ -108,12 +111,13 @@ def start_servers(
 
     if open_tab:
         if COLAB:
-            colab_url = eval_js(f"google.colab.kernel.proxyPort({server_port})")
-            url = colab_url + f"?{socket_port}"
+            path = f"/?{socket_port}"
+            if browser == "notebook":
+                serve_kernel_port_as_iframe(server_port, path=path)
+            else:
+                serve_kernel_port_as_window(server_port, path=path)
         else:
             url = f"http://localhost:{server_port}/?{socket_port}"
-
-        if browser is not None:
             if browser == "notebook":
                 if not NB:
                     raise ImportError(
@@ -128,14 +132,14 @@ def start_servers(
                         height="400",
                     )
                 )
-            else:
+            elif browser is not None:
                 try:
                     wb.get(browser).open_new_tab(url)
                 except wb.Error:
                     print("\nCould not open specified browser, using default instead\n")
                     wb.open_new_tab(url)
-        else:
-            wb.open_new_tab(url)
+            else:
+                wb.open_new_tab(url)
 
     if comms == "rtc":
         if not RTC:
